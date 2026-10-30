@@ -1,0 +1,192 @@
+import datetime
+import os
+import tkinter as tk
+from tkinter import messagebox
+
+SAVE_FILE = "mining_save.txt"
+
+
+def load_data():
+    if os.path.exists(SAVE_FILE):
+        try:
+            with open(SAVE_FILE, "r") as f:
+                lines = f.readlines()
+                btc = float(lines[0].strip())
+                gpus = int(lines[1].strip())
+                farms = int(lines[2].strip())
+                last_time_str = lines[3].strip()
+
+                last_time = datetime.datetime.fromisoformat(last_time_str)
+                now = datetime.datetime.now()
+                seconds_away = int((now - last_time).total_seconds())
+
+                if seconds_away > 5:
+                    income_per_sec = (gpus * 0.00001) + (farms * 0.0002)
+                    total_afk_income = income_per_sec * seconds_away
+                    if total_afk_income > 0:
+                        btc += total_afk_income
+                        minutes = seconds_away // 60
+                        seconds = seconds_away % 60
+                        messagebox.showinfo(
+                            "Добро пожаловать назад!",
+                            f"Вас не было {minutes} мин. {seconds} сек.\n\nВаша ферма намайнила в фоне:\n{total_afk_income:.6f} BTC!",
+                        )
+
+                return btc, gpus, farms
+        except:
+            return 0.0, 0, 0
+    return 0.0, 0, 0
+
+
+def save_data():
+    try:
+        now_str = datetime.datetime.now().isoformat()
+        with open(SAVE_FILE, "w") as f:
+            f.write(f"{bitcoins}\n{gpu_count}\n{farm_count}\n{now_str}")
+    except:
+        pass
+
+
+def update_ui():
+    lbl_balance.config(text=f"{bitcoins:.6f} BTC")
+    lbl_gpu.config(text=f"Видеокарты: {gpu_count} (Авто: +{gpu_count * 0.00001:.5f}/с)")
+    lbl_farm.config(text=f"Фермы: {farm_count} (Авто: +{farm_count * 0.0002:.4f}/с)")
+    btn_buy_gpu.config(text=f"Купить GPU ({gpu_cost:.5f} BTC)")
+    btn_buy_farm.config(text=f"Купить Ферму ({farm_cost:.4f} BTC)")
+
+
+def click_mine():
+    global bitcoins
+    bitcoins += 0.00001 + (gpu_count * 0.000002)
+    update_ui()
+    save_data()
+
+
+def buy_gpu():
+    global bitcoins, gpu_count, gpu_cost
+    if bitcoins >= gpu_cost:
+        bitcoins -= gpu_cost
+        gpu_count += 1
+        gpu_cost = 0.0005 * (1.2**gpu_count)
+        update_ui()
+        save_data()
+    else:
+        messagebox.showwarning("Не хватает BTC", "Заработайте еще немного крипты!")
+
+
+def buy_farm():
+    global bitcoins, farm_count, farm_cost
+    if bitcoins >= farm_cost:
+        bitcoins -= farm_cost
+        farm_count += 1
+        farm_cost = 0.008 * (1.3**farm_count)
+        update_ui()
+        save_data()
+    else:
+        messagebox.showwarning(
+            "Не хватает BTC", "Вам нужно больше Биткоинов для фермы!"
+        )
+
+
+def auto_mine():
+    global bitcoins
+    income = (gpu_count * 0.00001) + (farm_count * 0.0002)
+    if income > 0:
+        bitcoins += income
+        update_ui()
+    save_data()
+    root.after(1000, auto_mine)
+
+
+def reset_game():
+    global bitcoins, gpu_count, farm_count, gpu_cost, farm_cost
+    if messagebox.askyesno("Сброс", "Вы уверены, что хотите обнулить ферму?"):
+        bitcoins = 0.0
+        gpu_count = 0
+        farm_count = 0
+        gpu_cost = 0.0005
+        farm_cost = 0.008
+        update_ui()
+        save_data()
+
+
+root = tk.Tk()
+root.title("Crypto Miner Pro")
+root.geometry("450x800")
+root.configure(bg="#0f172a")
+
+FONT_MAIN = ("Arial", 14)
+FONT_BOLD = ("Arial", 14, "bold")
+FONT_BIG = ("Arial", 24, "bold")
+
+bitcoins, gpu_count, farm_count = load_data()
+gpu_cost = 0.0005 * (1.2**gpu_count)
+farm_cost = 0.008 * (1.3**farm_count)
+
+lbl_title = tk.Label(
+    root, text="СИМУЛЯТОР МАЙНИНГА", bg="#0f172a", fg="#06b6d4", font=FONT_BOLD
+)
+lbl_title.pack(pady=(30, 10))
+
+lbl_balance = tk.Label(
+    root, text="0.000000 BTC", bg="#0f172a", fg="#f59e0b", font=FONT_BIG
+)
+lbl_balance.pack(pady=10)
+
+btn_mine = tk.Button(
+    root,
+    text="⛏ МАЙНИТЬ BTC",
+    font=FONT_BIG,
+    bg="#22c55e",
+    fg="white",
+    command=click_mine,
+    height=2,
+)
+btn_mine.pack(fill=tk.X, padx=30, pady=20)
+
+lbl_shop = tk.Label(
+    root, text="МАГАЗИН УЛУЧШЕНИЙ:", bg="#0f172a", fg="white", font=FONT_BOLD
+)
+lbl_shop.pack(pady=(20, 5))
+
+lbl_gpu = tk.Label(root, text="Видеокарты: 0", bg="#0f172a", fg="#94a3b8", font=FONT_MAIN)
+lbl_gpu.pack()
+
+btn_buy_gpu = tk.Button(
+    root,
+    text="Купить GPU",
+    font=FONT_BOLD,
+    bg="#3b82f6",
+    fg="white",
+    command=buy_gpu,
+    height=2,
+)
+btn_buy_gpu.pack(fill=tk.X, padx=30, pady=(5, 15))
+
+lbl_farm = tk.Label(root, text="Фермы: 0", bg="#0f172a", fg="#94a3b8", font=FONT_MAIN)
+lbl_farm.pack()
+
+btn_buy_farm = tk.Button(
+    root,
+    text="Купить Ферму",
+    font=FONT_BOLD,
+    bg="#6366f1",
+    fg="white",
+    command=buy_farm,
+    height=2,
+)
+btn_buy_farm.pack(fill=tk.X, padx=30, pady=(5, 15))
+
+btn_reset = tk.Button(
+    root,
+    text="Начать заново",
+    font=FONT_MAIN,
+    bg="#334155",
+    fg="#cbd5e1",
+    command=reset_game,
+)
+btn_reset.pack(side=tk.BOTTOM, fill=tk.X, padx=30, pady=20)
+
+update_ui()
+root.after(1000, auto_mine)
+root.mainloop()
