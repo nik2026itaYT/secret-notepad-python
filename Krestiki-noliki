@@ -1,0 +1,234 @@
+import random
+import tkinter as tk
+from tkinter import messagebox
+
+root = tk.Tk()
+root.title("Neon TicTacToe Pro")
+root.geometry("450x800")
+root.configure(bg="#0f172a")
+
+FONT_BOLD = ("Arial", 14, "bold")
+cell_size = 110
+board = ["." for _ in range(9)]
+game_over = False
+difficulty = "Умный"
+
+
+def check_winner(b, p):
+    if b[0] == p and b[1] == p and b[2] == p:
+        return True
+    if b[3] == p and b[4] == p and b[5] == p:
+        return True
+    if b[6] == p and b[7] == p and b[8] == p:
+        return True
+    if b[0] == p and b[3] == p and b[6] == p:
+        return True
+    if b[1] == p and b[4] == p and b[7] == p:
+        return True
+    if b[2] == p and b[5] == p and b[8] == p:
+        return True
+    if b[0] == p and b[4] == p and b[8] == p:
+        return True
+    if b[2] == p and b[4] == p and b[6] == p:
+        return True
+    return False
+
+
+def bot_move():
+    global game_over
+    if game_over or "." not in board:
+        return
+
+    if difficulty == "Глупый":
+        empty = [i for i in range(9) if board[i] == "."]
+        board[random.choice(empty)] = "O"
+        draw_board()
+        check_game_status()
+        return
+
+    for i in range(9):
+        if board[i] == ".":
+            board_copy = board.copy()
+            board_copy[i] = "O"
+            if check_winner(board_copy, "O"):
+                board[i] = "O"
+                draw_board()
+                check_game_status()
+                return
+
+    for i in range(9):
+        if board[i] == ".":
+            board_copy = board.copy()
+            board_copy[i] = "X"
+            if check_winner(board_copy, "X"):
+                board[i] = "O"
+                draw_board()
+                check_game_status()
+                return
+
+    if board[4] == ".":
+        board[4] = "O"
+    else:
+        corners = [0, 2, 6, 8]
+        available_corners = [c for c in corners if board[c] == "."]
+        if available_corners:
+            board[random.choice(available_corners)] = "O"
+        else:
+            empty = [i for i in range(9) if board[i] == "."]
+            board[random.choice(empty)] = "O"
+
+    draw_board()
+    check_game_status()
+
+
+def check_game_status():
+    global game_over
+    if check_winner(board, "X"):
+        game_over = True
+        lbl_status.config(text="ТЫ ПОБЕДИЛ! 🎉", fg="#22c55e")
+        messagebox.showinfo("Победа!", "Ты обыграл бота!")
+    elif check_winner(board, "O"):
+        game_over = True
+        lbl_status.config(text="БОТ ВЫИГРАЛ! 🤖", fg="#ef4444")
+        messagebox.showerror("Поражение", "Бот оказался умнее!")
+    elif "." not in board:
+        game_over = True
+        lbl_status.config(text="НИЧЬЯ! 🤝", fg="#eab308")
+        messagebox.showinfo("Ничья", "Достойная игра!")
+
+
+def on_canvas_click(event):
+    global game_over
+    if game_over:
+        return
+
+    c = event.x // cell_size
+    r = event.y // cell_size
+    idx = r * 3 + c
+
+    if r > 2 or c > 2 or board[idx] != ".":
+        return
+
+    board[idx] = "X"
+    draw_board()
+    check_game_status()
+
+    if not game_over:
+        root.after(300, bot_move)
+
+
+def draw_board():
+    canvas.delete("all")
+    for r in range(3):
+        for c in range(3):
+            x1, y1 = c * cell_size, r * cell_size
+            x2, y2 = x1 + cell_size, y1 + cell_size
+
+            canvas.create_rectangle(
+                x1, y1, x2, y2, fill="#1e293b", outline="#475569", width=2
+            )
+
+            idx = r * 3 + c
+            if board[idx] == "X":
+                canvas.create_line(
+                    x1 + 25,
+                    y1 + 25,
+                    x2 - 25,
+                    y2 - 25,
+                    fill="#00ffcc",
+                    width=7,
+                    capstyle=tk.ROUND,
+                )
+                canvas.create_line(
+                    x2 - 25,
+                    y1 + 25,
+                    x1 + 25,
+                    y2 - 25,
+                    fill="#00ffcc",
+                    width=7,
+                    capstyle=tk.ROUND,
+                )
+            elif board[idx] == "O":
+                canvas.create_oval(
+                    x1 + 25, y1 + 25, x2 - 25, y2 - 25, outline="#ff4444", width=7
+                )
+
+
+def restart_game():
+    global board, game_over
+    board = ["." for _ in range(9)]
+    game_over = False
+    lbl_status.config(text="ТВОЙ ХОД (КРЕСТИКИ)", fg="#38bdf8")
+    draw_board()
+
+
+def change_diff(diff):
+    global difficulty
+    difficulty = diff
+    lbl_diff_status.config(text=f"Режим: {difficulty}")
+
+
+lbl_title = tk.Label(
+    root, text="NEON TIC-TAC-TOE", bg="#0f172a", fg="#38bdf8", font=FONT_BOLD
+)
+lbl_title.pack(pady=(30, 5))
+
+frame_diff = tk.Frame(root, bg="#0f172a")
+frame_diff.pack(pady=5)
+
+btn_easy = tk.Button(
+    frame_diff,
+    text="Глупый ИИ",
+    font=FONT_BOLD,
+    bg="#22c55e",
+    fg="white",
+    command=lambda: change_diff("Глупый"),
+    padx=10,
+)
+btn_easy.pack(side=tk.LEFT, padx=5)
+
+btn_hard = tk.Button(
+    frame_diff,
+    text="Умный ИИ",
+    font=FONT_BOLD,
+    bg="#ef4444",
+    fg="white",
+    command=lambda: change_diff("Умный"),
+    padx=10,
+)
+btn_hard.pack(side=tk.LEFT, padx=5)
+
+lbl_diff_status = tk.Label(
+    root, text="Режим: Умный", bg="#0f172a", fg="white", font=FONT_BOLD
+)
+lbl_diff_status.pack(pady=5)
+
+lbl_status = tk.Label(
+    root, text="ТВОЙ ХОД (КРЕСТИКИ)", bg="#0f172a", fg="#38bdf8", font=FONT_BOLD
+)
+lbl_status.pack(pady=5)
+
+canvas = tk.Canvas(
+    root,
+    width=cell_size * 3,
+    height=cell_size * 3,
+    bg="#0f172a",
+    borderwidth=0,
+    highlightthickness=0,
+)
+canvas.pack(pady=15)
+canvas.bind("<Button-1>", on_canvas_click)
+
+btn_restart = tk.Button(
+    root,
+    text="НАЧАТЬ ЗАНОВО",
+    font=FONT_BOLD,
+    bg="#007acc",
+    fg="white",
+    command=restart_game,
+    height=2,
+)
+btn_restart.pack(fill=tk.X, padx=60, pady=15)
+
+draw_board()
+root.mainloop()
